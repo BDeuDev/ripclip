@@ -1,0 +1,1 @@
+INSERT INTO clips (content, copied_at) VALUES (?1, datetime('now'))

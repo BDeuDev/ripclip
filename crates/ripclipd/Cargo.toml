@@ -1,0 +1,10 @@
+[package]
+name = "ripclipd"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.100"
+arboard = "3.6.1"
+ripclip-core = { path = "../ripclip-core" }
+rusqlite = "0.37.0"

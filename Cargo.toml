@@ -1,0 +1,9 @@
+[workspace]
+members = [
+    "crates/ripclip-core",
+    "crates/ripclipd",
+    "crates/ripclip-cli",
+    "crates/ripclip-ui"
+]
+resolver = "2"
+

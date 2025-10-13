@@ -1,0 +1,1 @@
+SELECT id, content, copied_at FROM clips ORDER BY id DESC LIMIT ?1
