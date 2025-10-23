@@ -8,3 +8,4 @@ anyhow = "1.0.100"
 arboard = "3.6.1"
 ripclip-core = { path = "../ripclip-core" }
 rusqlite = "0.37.0"
+tokio = { version = "1.47.1", features = ["full", "macros"] }

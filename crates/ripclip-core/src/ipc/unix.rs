@@ -1,8 +1,8 @@
-use std::os::unix::net::{UnixListener, UnixStream};
 use std::io::{Read, Write};
+use std::os::unix::net::{UnixListener, UnixStream};
 
 pub struct IpcListener {
-    listener: UnixListener,
+    inner: UnixListener,
 }
 
 pub struct IpcStream {
@@ -12,12 +12,15 @@ pub struct IpcStream {
 impl IpcListener {
     pub fn bind(path: &str) -> std::io::Result<Self> {
         let _ = std::fs::remove_file(path);
-        Ok(Self { listener: UnixListener::bind(path)? })
+        Ok(Self { inner: UnixListener::bind(path)? })
     }
 
     pub fn accept(&self) -> std::io::Result<IpcStream> {
-        let (stream, _) = self.listener.accept()?;
+        let (stream, _) = self.inner.accept()?;
         Ok(IpcStream { stream })
+    }
+    pub fn incoming(&self) -> std::os::unix::net::Incoming<'_> {
+        self.inner.incoming()
     }
 }
 

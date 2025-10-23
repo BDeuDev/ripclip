@@ -1,36 +1,40 @@
-use rusqlite::Connection;
-use arboard::Clipboard;
+use anyhow::Ok;
 use ripclip_core::db::repositories::ClipRepository;
-use std::{fs::create_dir_all, thread, time::Duration};
+use rusqlite::Connection;
+use std::{
+    fs::create_dir_all,
+    sync::{Arc, Mutex}
+};
+use tokio::{join, task};
 
-fn main() -> anyhow::Result<()> {
+use crate::workers::{ClipboardWorker, IPCWorker};
+
+mod workers;
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
     create_dir_all("data")?;
 
-    let conn = Connection::open("data/clipboard.db")?;
-    let repo = ClipRepository::new(&conn);
+    let conn = Arc::new(Mutex::new(Connection::open("data/clipboard.db")?));
+    let repo = Arc::new(ClipRepository::new(conn.clone()));
+
     repo.init_table()?;
 
-    let mut clipboard = Clipboard::new()?;
-
     println!("Daemon iniciado. Escuchando cambios...");
-    
-    let mut last = clipboard.get_text()?;
-    loop {
-        if let Ok(current) = clipboard.get_text() {
-            if current != last {
-                println!("📋 Nuevo texto copiado: {}", current);
-                repo.save(&current)?;
-                last = current;
 
-                let recents = repo.recent(10)?;
-                for r in recents {
-                    println!("textos: {:?}", r.content )
-                }
-                
-            }
-        }
+    let repo_clip = repo.clone();
+    let clipboard_task = task::spawn(async move {
+        ClipboardWorker::new(repo_clip, 5000).run().await;
+    });
 
-        println!("Clipboard text was: {}", clipboard.get_text().unwrap());
-        thread::sleep(Duration::from_millis(500));
-    }
+    let repo_ipc = repo.clone();
+    let ipc_task = task::spawn(async move {
+        IPCWorker::new(repo_ipc).run();
+    });
+
+    let (res1, res2) = join!(clipboard_task, ipc_task);
+
+    res1?;
+    res2?;
+    Ok(())
 }

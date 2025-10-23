@@ -1,6 +1,7 @@
-use gtk4::glib::{self, clone};
+use gtk4::glib::{self};
 use gtk4::prelude::*;
 use gtk4::{Application, ApplicationWindow, Box as GtkBox, Button, Label, Orientation};
+use ripclip_core::db::repositories::ClipRepository;
 
 fn main() -> glib::ExitCode {
     let app = Application::builder()
@@ -17,7 +18,7 @@ fn main() -> glib::ExitCode {
 
         let vbox = GtkBox::new(Orientation::Vertical, 10);
 
-        let items = vec!["Clip 1", "Clip 2", "Clip 3"];
+        let items = ClipRepository::recent(10);
 
         for item in items {
             let row = GtkBox::new(Orientation::Horizontal, 5);
