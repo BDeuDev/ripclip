@@ -1,13 +1,11 @@
-use std::io::{Read, Write};
 use gtk4::glib::{self, ControlFlow};
 use gtk4::prelude::*;
 use gtk4::{Application, ApplicationWindow, Box as GtkBox, Button, Label, Orientation};
 use ripclip_core::ipc::IpcStream;
+use std::io::{Read, Write};
 
 fn main() -> glib::ExitCode {
-    let app = Application::builder()
-        .application_id("ripclipui.gtk")
-        .build();
+    let app = Application::builder().application_id("ripclipui.gtk").build();
 
     app.connect_activate(|app| {
         let window = ApplicationWindow::builder()
@@ -51,6 +49,10 @@ fn main() -> glib::ExitCode {
                                 let row = GtkBox::new(Orientation::Horizontal, 5);
                                 let label = Label::new(Some(&item));
                                 let button = Button::with_label("Copiar");
+
+                                button.set_hexpand(true);
+                                button.set_halign(gtk4::Align::End);
+                                button.set_margin_end(8);
 
                                 let label_clone = label.clone();
                                 button.connect_clicked(move |_| {
