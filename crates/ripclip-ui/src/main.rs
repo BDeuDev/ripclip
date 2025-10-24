@@ -1,7 +1,8 @@
-use gtk4::glib::{self};
+use std::io::{Read, Write};
+use gtk4::glib::{self, ControlFlow};
 use gtk4::prelude::*;
 use gtk4::{Application, ApplicationWindow, Box as GtkBox, Button, Label, Orientation};
-use ripclip_core::db::repositories::ClipRepository;
+use ripclip_core::ipc::IpcStream;
 
 fn main() -> glib::ExitCode {
     let app = Application::builder()
@@ -17,28 +18,55 @@ fn main() -> glib::ExitCode {
             .build();
 
         let vbox = GtkBox::new(Orientation::Vertical, 10);
-
-        let items = ClipRepository::recent(10);
-
-        for item in items {
-            let row = GtkBox::new(Orientation::Horizontal, 5);
-
-            let label = Label::new(Some(item));
-
-            let button = Button::with_label("Copiar");
-            let label_clone = label.clone();
-            button.connect_clicked(move |_| {
-                println!("Copiado: {}", label_clone.text());
-            });
-
-            row.append(&label);
-            row.append(&button);
-
-            vbox.append(&row);
-        }
-
         window.set_child(Some(&vbox));
         window.present();
+
+        glib::timeout_add_local(std::time::Duration::from_secs(2), {
+            let vbox = vbox.clone();
+            move || {
+                if let Ok(mut stream) = IpcStream::connect("/tmp/ripclip.sock") {
+                    if stream.write_all(b"GET_COUNT").is_ok() {
+                        let mut buf = [0; 4096];
+                        if let Ok(len) = stream.read(&mut buf) {
+                            let response = String::from_utf8_lossy(&buf[..len]);
+                            println!("Respuesta: {}", response);
+
+                            let items: Vec<String> = response
+                                .split("Clip {")
+                                .filter_map(|part| {
+                                    if let Some(content) = part.split("content: ").nth(1) {
+                                        let content = content.split(',').next()?.trim();
+                                        Some(content.trim_matches('"').to_string())
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .collect();
+
+                            while let Some(child) = vbox.first_child() {
+                                vbox.remove(&child);
+                            }
+
+                            for item in items {
+                                let row = GtkBox::new(Orientation::Horizontal, 5);
+                                let label = Label::new(Some(&item));
+                                let button = Button::with_label("Copiar");
+
+                                let label_clone = label.clone();
+                                button.connect_clicked(move |_| {
+                                    println!("Copiado: {}", label_clone.text());
+                                });
+
+                                row.append(&label);
+                                row.append(&button);
+                                vbox.append(&row);
+                            }
+                        }
+                    }
+                }
+                ControlFlow::Continue
+            }
+        });
     });
 
     app.run()
