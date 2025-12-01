@@ -1,9 +1,8 @@
 use anyhow::Ok;
 use ripclip_core::db::repositories::ClipRepository;
-use rusqlite::Connection;
 use std::{
     fs::create_dir_all,
-    sync::{Arc, Mutex}
+    sync::{Arc, Mutex},
 };
 use tokio::{join, task};
 
@@ -15,21 +14,20 @@ mod workers;
 async fn main() -> anyhow::Result<()> {
     create_dir_all("data")?;
 
-    let conn = Arc::new(Mutex::new(Connection::open("data/clipboard.db")?));
-    let repo = Arc::new(ClipRepository::new(conn.clone()));
+    let repo = Arc::new(ClipRepository::new("data/clipboard.db").await?);
 
-    repo.init_table()?;
+    repo.init_table().await?;
 
     println!("Daemon iniciado. Escuchando cambios...");
 
-    let repo_clip = repo.clone();
+    let repo_clip = Arc::clone(&repo);
     let clipboard_task = task::spawn(async move {
-        ClipboardWorker::new(repo_clip, 5000).run().await;
+        ClipboardWorker::new(Arc::clone(&repo_clip), 100).run().await;
     });
 
-    let repo_ipc = repo.clone();
+    let repo_ipc = Arc::clone(&repo);
     let ipc_task = task::spawn(async move {
-        IPCWorker::new(repo_ipc).run();
+        IPCWorker::new(repo_ipc).run().await;
     });
 
     let (res1, res2) = join!(clipboard_task, ipc_task);

@@ -14,25 +14,43 @@ impl ClipboardWorker {
         Self { repo, sleep_time }
     }
 
-    pub async fn run(&self){
-        let mut clipboard = Clipboard::new().unwrap();
+    pub async fn run(&self) {
+        let mut clipboard = Clipboard::new().expect("Unexpected Error initializing the Clipboard");
 
-        let mut last = clipboard.get_text().unwrap();
+        let mut last = String::new();
+
+        match clipboard.get_text() {
+            Ok(v) => last = v,
+            Err(e) => {
+                println!("Error getting value from clipboard: {}", e);
+            }
+        }
+
         loop {
+
             if let Ok(current) = clipboard.get_text() {
-                if current != last {
+                if !current.is_empty() && current != last {
                     println!("📋 Nuevo texto copiado: {}", current);
-                    self.repo.save(&current).unwrap();
+                    let _ = self.repo.save(&current).await;
                     last = current;
 
-                    let recents = self.repo.recent(10).unwrap();
-                    for r in recents {
+                    let recents = self.repo.recent(10).await;
+
+                    match recents {
+                        Ok(recents) => {
+                            for r in recents {
                         println!("textos: {:?}", r.content)
                     }
+                        },
+            Err(e) => {
+                println!("Error getting recents Clips: {}", e);
+            }
+                    }
+                
+
                 }
             }
 
-            println!("Clipboard text was: {}", clipboard.get_text().unwrap());
             sleep(Duration::from_millis(self.sleep_time)).await;
         }
     }
